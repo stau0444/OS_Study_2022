@@ -143,3 +143,118 @@
 - 사용자 코드와 커널 코드 모두 OS스레드에서 실행된다.(유저모드 코드가 진행되다가 system call이 호출되면 커널모드로 전환)
 - 네이티브 스레드 , 커널 스레드 , 커널 - 레벨 스레드 ,os-레벨 스레드 라고도 불리며
 - 네이티브가 OS를 의미하기 떄문에 보통 네이티브 스레드라고 부른다.
+
+> user thread (user level thread)
+
+- 스레드 개념을 프로그래밍 레벨에서 추상화한 것을 말한다.
+- 자바에서 new Thread()를 통해 생성하는 스레드가 유저 스레드에 해당한다
+- thread.strat() 함수는 start0라는 메서드를 호출한다 start0는 JNI를 통해 OS에 System call 을 호출한다.
+- linux의 경우 이때 clone이 호출되고 OS레벨의 스레드가 생성된다. 생성된 OS 레벨의 스레드는 user level의 thread 객체와 연결된다.
+- 유저스레드는 반드시 OS스레드와 연결되어야 CPU에 의해 실행된다. 
+
+### user thread와 OS thread의 연결방식
+
+> One-to-One model
+
+<img width="339" alt="스크린샷 2022-12-16 오후 6 31 57" src="https://user-images.githubusercontent.com/51349774/208067960-a1647f38-73e8-4e55-b667-253a98083e42.png">
+
+- 자바에서 사용되는 스레드 연결방식이다.
+- 유저스레드와 OS 스레드가 1:1로 연결된다.
+- 스레드 관리(생성 , 삭제 , 스케쥴 관리등..)를  OS(Kernel)에 위임한다.
+- OS에서 스케쥴링을 관리하기 떄문에 멀티코어 환경에서도 잘 동작한다.
+- 1:1로 스레드가 연결되기 때문에 한 스레드가 block-IO로 수행된다해도 다른 스레드는 잘 동작한다.
+- 경우에 따라 race condition이 발생할 수 있다.
+
+
+
+> Many-to-One Model
+> 
+<img width="339" alt="스크린샷 2022-12-16 오후 7 08 09" src="https://user-images.githubusercontent.com/51349774/208074958-18531ee6-2638-48bd-96a7-d137d7359843.png">
+
+- 유저 스레드가 여러개가 하나의 OS 레벨 스레드에 연결된 형태
+- 컨텍스 스위칭이 user 레벨에서만 일어나고 kernel이 개입하지 않기떄문에 훨씬 빠르게 스위칭된다.
+- OS 스레드에서 race condition이 일어날 가능성이 적다 
+- OS 스레드가 하나이기 떄문에 멀티코어를  활용할 수 없다.
+- 여러 user thread가 하나의 os thread에 연결되어 있기 떄문에 하나의 user thread가 block IO를 수행한다면
+- 다른 스레드가 block에 걸리기 때문에 주로 non-block IO를 사용한다 
+
+> Many-to-Many Model
+<img width="342" alt="스크린샷 2022-12-16 오후 7 08 03" src="https://user-images.githubusercontent.com/51349774/208074937-0d744cc5-0e06-4a1a-a869-6589bd65e926.png">
+
+- 여러개의 user thread와 거기에 맞게 적당한 os thread가 사용된다.
+- 여러개의 user thread 들이 kernel에 의해 OS thread에 분배된다.
+- GO lang에서 사용되는 모델이다.
+- Many to One 과 one to one model의 장점이 합쳐져있다.
+- 구현이 복잡하다
+
+> green thread
+
+- 자바의 초창기 버전은 Many-to-One 모델이 사용되었는데
+- 이때의 유저 스레드들을 그린 스레드라고 불렀다.
+- 요즘은 개념이 확장되어 OS와는 독립적으로 유저 레벨에서 스케줄링되는 스레드를 의미한다.
+- many-to-one , many-to-many model의 user thread들을 의미하기도 한다.
+
+
+### user mode 와  kernel mode
+
+> kernel이란?
+
+- 운영체제의 핵심이다 시스템의 전반을 관리/감독하고 하드웨어 관련된 작업을 직접 수행한다.
+- 시스템을 보호하기 위해서 kernel mode가 만들어 졌다.
+
+> user mode ->kernel mode 로 전환되는 과정
+
+1. user mode 프로그램 실행 중에 인터럽트가 발생 하거나 시스템 콜을 호출하게 되면 커널모드가 실행된다.
+2.  kernel mode로 전환되면 맨 처음으로 실행되던 프로그램의 cpu상태를 저장한다.
+3.  다음으로 kernel이 인터럽트 혹은 시스템콜을 직접 처리한다.(cpu에서 커널 코드가 실행된다.)
+4.  처리가 완료되면 중단됐던 프로그램의 cpu 상태를 복원하고 다시 통제권을 프로그램에게 반환한다.
+5.  kernel mode에서 user mode로 돌아오고 프로그램이 이어서 실행된다.
+
+> Interrupt
+- 시스템에서 발생한 다양한 종류의 이벤트 혹은 이벤트를 알리는 메커니즘을 말한다.
+- interrupt가 발생하면 cpu에서는 즉각적으로 커널 코드로 인터럽트를 처리하기 위해 kernel mode로 전환된다.
+
+> 대표적으로 interrupt가 발생하는 경우
+
+- 전원에 문제가 생겼을 때
+- I/O 작업이 완료됐을 때
+- 시간이 다 됐을 때(timer 관련)
+- 0으로 나눴을 때 (program 레벨에서 발생하기 때문에 trap이라고도 부른다)
+- 잘못된 메모리 공간에 접근을 시도할 때(program 레벨에서 발생하기 때문에 trap이라고도 부른다)
+
+> System call
+
+- 프로그램이 OS커널이 제공하는 서비스를 이용하고 싶을때 시스템 콜을 통해 실행한다.
+- 시스템 콜이 발생하면  해당 콜에 대응하는 각각의 커널 코드가 커널모드에서 실행된다.
+- 자바 , 파이썬등 하이 레벨 언어에서는 간접적으로 시스템 콜을 사용할 수 있도록 기능들이 추상화되어 있기 때문에 
+- 쉽게 시스템 콜을 사용할 수 있다. 
+- 자바의 경우 native라는 예약어가 붙은 메서드는 JNI(java native interface)를 통해 시스템 콜을 호출하는 메서드이다 
+
+> 시스템 콜의 종류
+
+- 프로세스 / 스레드 생성 kill 관련
+- 파일  I/O 관련
+- 소켓 관련(네트워크)
+- 장치 관련(device)
+- 프로세스 통신 관련
+
+> 시스템 콜 , 인터럽트 호출 예시 (파일 read)
+
+-  두개의 스레드가 시스템 콜과 인터럽트가 호출 되는 예시이다 
+-  t1은 파일을 불러오는 system call을 호출하고 있고 running 상태이다. 
+-  싱글 코어 멀티테스킹 방식으로 동작하고 있다.
+
+<img width="788" alt="스크린샷 2022-12-16 오후 7 53 45" src="https://user-images.githubusercontent.com/51349774/208083096-0ec27d46-0c86-4b55-a5b8-660e38413193.png">
+
+
+### context switching
+
+- CPU/코어에서 실행 중이던 프로세스 / 스레드가 다른 프로세스/스레드로 교체되는 것을 말한다.
+- 여러 프로세스/스레드를 동시에 실행시키기 위해 필요하다.
+- 주어진 timeslice(quantum)을 다 사용했거나 IO 작업을 해야하거나 다른 리소스를 기다리는등의 작업에서 발생된다.
+- OS kernel에 의해 실행된다.
+- 다른 프로세스간의 컨텍스트 스위칭, 같은 프로세스 안에서의 컨텍스트 스위칭 두가지로 나뉜다.
+- OS kernel에 의해 실행된다.
+
+
+
