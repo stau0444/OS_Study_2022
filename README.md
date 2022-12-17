@@ -152,6 +152,9 @@
 - linux의 경우 이때 clone이 호출되고 OS레벨의 스레드가 생성된다. 생성된 OS 레벨의 스레드는 user level의 thread 객체와 연결된다.
 - 유저스레드는 반드시 OS스레드와 연결되어야 CPU에 의해 실행된다. 
 
+
+--- 
+
 ### user thread와 OS thread의 연결방식
 
 > One-to-One model
@@ -194,6 +197,7 @@
 - 요즘은 개념이 확장되어 OS와는 독립적으로 유저 레벨에서 스케줄링되는 스레드를 의미한다.
 - many-to-one , many-to-many model의 user thread들을 의미하기도 한다.
 
+--- 
 
 ### user mode 와  kernel mode
 
@@ -252,9 +256,44 @@
 - CPU/코어에서 실행 중이던 프로세스 / 스레드가 다른 프로세스/스레드로 교체되는 것을 말한다.
 - 여러 프로세스/스레드를 동시에 실행시키기 위해 필요하다.
 - 주어진 timeslice(quantum)을 다 사용했거나 IO 작업을 해야하거나 다른 리소스를 기다리는등의 작업에서 발생된다.
-- OS kernel에 의해 실행된다.
-- 다른 프로세스간의 컨텍스트 스위칭, 같은 프로세스 안에서의 컨텍스트 스위칭 두가지로 나뉜다.
-- OS kernel에 의해 실행된다.
+- OS kernel에 의해 실행되며 cpu의 레지스터 상태를 교체한다.
+- 다른 프로세스간의 컨텍스트 스위칭(process context switching), 같은 프로세스 안에서의 컨텍스트 스위칭(thread context switching) 두가지로 나뉜다.
 
 
+> process context switching과 thread context switching
 
+- process context switching의 경우 프로세스간의 가상 메모리 주소가 다르기 떄문에 메모리 관련 처리를 추가로 해줘야한다.
+
+--- 
+
+### CPU sceduler와 dispatcher
+
+> CPU scheduler 란 ?
+
+- cpu가 지속적으로 작동할 수 있도록 실행할 프로세스를 선택하는 역할을 한다
+- cpu의 ready queue(실행을 기다리는 ready 상태의 프로세스들이 queue 형태로 모여 있는 곳)
+
+> dispatcher 란 ? 
+
+- 선택된 프로세스에게 CPU를 할당하는 역할
+- 선택된 프로세스를 cpu에서 실행될 수 있는 형태로 만들어주는 역할을 한다.
+- context switching을 담당.
+- kernel mode -> user mode로의 전환
+- 선택된 프로세스가 작업을 시작할 적절한 위치로 이동시킨다
+
+> scheduling 선점 방식
+
+ 1. Nonpreemptive (비선점) scheduling
+ - 실행중인 프로세스가 종료되거나 , IO 작업을 위해 waiting 상태로 가는 것 , 자발적으로 ready상태로 넘어가는 것이 비선점 방식에 해당한다.
+ - 신사적, 협력적(cooperative)  , 느린 응답성인 특성을 갖는다(한 프로세스가 자발적으로 끝날때까지 다른 프로세스는 기다려야 하기 떄문에)
+
+ 2. Preemptive(선점) scheduling
+ - 비선점 방식을 기본적으로 포함하고 추가적으로 
+ - 실행중인 프로세스를 강제적으로 ready상태로 변경시킨다.
+ - 특정 프로세스에 우선순위를 주거나 , time slice가 모두 소진 되었을때 발생할 수 있다.
+ - 적극적 ,강제적 , 빠른 응답성 , 데이터 일관성 문제의 특징을 갖는다 . 
+
+
+ 
+
+ 
